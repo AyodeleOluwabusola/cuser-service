@@ -8,6 +8,7 @@ import com.coronation.captr.userservice.enums.IResponseEnum;
 public interface IResponseData <T>  extends  IResponse{
 
     T getData();
+    void setData (T data);
 
     void setResponse(IResponseEnum iResponseEnum);
 }

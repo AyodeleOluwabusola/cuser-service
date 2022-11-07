@@ -16,6 +16,8 @@ public class AppProperties {
 
     private String notificationQueue = "myQueue";
     private String notificationExchange;
-    private String emailConfirmationMessage = "Dear %s, \n Here is your email confirmation link. %s . Kindly note this link would expire in the next %s %s";
+    private String emailConfirmationMessage = "Dear %s, \n Here is your email confirmation link. %s . Kindly note this link would expire by %s ";
+    private int emailConfirmationExpTime = 360;
+    private String emailConfirmationLink= "localhost:8000/captr/access/verify-email?email=%s&code=%s";
 
 }

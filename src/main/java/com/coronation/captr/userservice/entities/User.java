@@ -15,11 +15,11 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Entity
-@Table(name = "USER")
+@Table(name = "CT_USER")
 public class User extends BaseEntity {
 
     @Column(name = "FIRST_NAME", nullable = false)
-    private String firstname;
+    private String firstName;
 
     @Column(name = "LAST_NAME", nullable = false)
     private String lastName;

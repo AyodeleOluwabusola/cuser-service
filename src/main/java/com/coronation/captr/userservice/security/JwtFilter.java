@@ -35,7 +35,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private final String[] whitelistedPaths = {
             "/actuator/**",
-            "user/create"
+            "/sign-up"
     };
 
     @Override

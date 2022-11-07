@@ -2,19 +2,21 @@ package com.coronation.captr.userservice.service;
 
 import com.coronation.captr.userservice.entities.User;
 import com.coronation.captr.userservice.enums.IResponseEnum;
-import com.coronation.captr.userservice.interfaces.IResponse;
 import com.coronation.captr.userservice.interfaces.IResponseData;
 import com.coronation.captr.userservice.pojo.MessagePojo;
-import com.coronation.captr.userservice.pojo.Response;
 import com.coronation.captr.userservice.pojo.ResponseData;
+import com.coronation.captr.userservice.pojo.UserPojo;
 import com.coronation.captr.userservice.pojo.req.UserRequest;
 import com.coronation.captr.userservice.respositories.IUserRespository;
 import com.coronation.captr.userservice.util.AppProperties;
+import com.coronation.captr.userservice.util.Constants;
+import com.coronation.captr.userservice.util.ProxyTransformer;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -23,6 +25,7 @@ import java.util.UUID;
  * @author toyewole
  */
 
+@Transactional
 @Service
 public class UserService {
 
@@ -39,9 +42,9 @@ public class UserService {
     @Autowired
     AppProperties appProperties;
 
-    public IResponseData<User> createUser(UserRequest request) {
+    public IResponseData<UserPojo> createUser(UserRequest request) {
 
-        IResponseData<User> response = isRequestValid(request);
+        IResponseData<UserPojo> response = isRequestValid(request);
 
         if (IResponseEnum.SUCCESS.getCode() != response.getCode()) {
             return response;
@@ -54,29 +57,32 @@ public class UserService {
 
         User user = new User();
         user.setEmail(request.getEmail());
-        user.setFirstname(request.getFirstName());
+        user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setPassword(hashPassword(request.getPassword()));
-        user.setConfirmationCode(UUID.randomUUID().toString());
+        String token = UUID.randomUUID().toString();
+        user.setConfirmationCode(hashPassword(token));
 
         iUserRespository.save(user);
 
-        sendEmailConfirmation(user);
+        sendEmailConfirmation(user, token);
 
+        response.setData(ProxyTransformer.transformUserToUserPojo(user));
         response.setResponse(IResponseEnum.SUCCESS);
         return response;
     }
 
-    private void sendEmailConfirmation(User user) {
+    private void sendEmailConfirmation(User user, String token) {
         MessagePojo message = new MessagePojo();
 
-        String token = user.getConfirmationCode();
 
-        //TODO make this configurable
-        message.setMessage(String.format(appProperties.getEmailConfirmationMessage(), user.getEmail(), token, "24", "hrs"));
+        var expTime = LocalDateTime.now().plusMinutes(appProperties.getEmailConfirmationExpTime());
+        String link = String.format(appProperties.getEmailConfirmationLink(), user.getEmail(), token);
+        message.setMessage(String.format(appProperties.getEmailConfirmationMessage(), user.getFirstName(), link, expTime.format(Constants.DATE_TIME_FORMATTER)));
         message.setRecipient(user.getEmail());
         message.setSource("user-service");
-        message.setRequestTime(LocalDateTime.now()); //TODO convert to test
+        message.setSubject("Email Confirmation");
+        message.setRequestTime(LocalDateTime.now().format(Constants.DATE_TIME_FORMATTER));
 
         rabbitTemplate.convertAndSend(message);
 
@@ -86,8 +92,8 @@ public class UserService {
         return passwordEncoder.encode(password);
     }
 
-    private IResponseData<User> isRequestValid(UserRequest request) {
-        ResponseData<User> response = new ResponseData<>();
+    private IResponseData<UserPojo> isRequestValid(UserRequest request) {
+        ResponseData<UserPojo> response = new ResponseData<>();
         if (StringUtils.isBlank(request.getEmail())) {
             response.setDescription("Kindly provide an Email Address ");
             return response;
