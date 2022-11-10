@@ -78,13 +78,13 @@ public class UserService {
 
         var expTime = LocalDateTime.now().plusMinutes(appProperties.getEmailConfirmationExpTime());
         String link = String.format(appProperties.getEmailConfirmationLink(), user.getEmail(), token);
-        message.setMessage(String.format(appProperties.getEmailConfirmationMessage(), user.getFirstName(), link, expTime.format(Constants.DATE_TIME_FORMATTER)));
+        message.setMessageBody(String.format(appProperties.getEmailConfirmationMessage(), user.getFirstName(), link, expTime.format(Constants.DATE_TIME_FORMATTER)));
         message.setRecipient(user.getEmail());
         message.setSource("user-service");
         message.setSubject("Email Confirmation");
         message.setRequestTime(LocalDateTime.now().format(Constants.DATE_TIME_FORMATTER));
 
-        rabbitTemplate.convertAndSend(message);
+        rabbitTemplate.convertAndSend(appProperties.getNotificationExchange(), appProperties.getRoutingKey(),message);
 
     }
 

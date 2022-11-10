@@ -4,20 +4,22 @@ package com.coronation.captr.userservice.pojo;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.Serializable;
 
-import java.time.LocalDateTime;
 
 /**
  * @author toyewole
  */
 @Getter
 @Setter
-public class MessagePojo {
+public class MessagePojo implements Serializable {
 
-    private String message;
+    private static final long serialVersionUID = 5492676866498222484L;
     private String subject;
+    private String attachment;
     private String messageType;
     private String recipient;
     private String source;
+    private String messageBody;
     private String requestTime;
 }
