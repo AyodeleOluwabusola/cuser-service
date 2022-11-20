@@ -3,6 +3,7 @@ package com.coronation.captr.userservice.service;
 import com.coronation.captr.userservice.entities.CTUser;
 import com.coronation.captr.userservice.enums.IResponseEnum;
 import com.coronation.captr.userservice.interfaces.IResponseData;
+import com.coronation.captr.userservice.pojo.ActivityLog;
 import com.coronation.captr.userservice.pojo.MessagePojo;
 import com.coronation.captr.userservice.pojo.ResponseData;
 import com.coronation.captr.userservice.pojo.UserPojo;
@@ -16,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,19 +64,41 @@ public class UserService {
         user.setLastName(request.getLastName());
         user.setPassword(commonLogic.hashPassword(request.getPassword()));
         String token = UUID.randomUUID().toString();
-        user.setConfirmationCode(commonLogic.hashPassword(token));
 
         iUserRepository.save(user);
 
+        //send email confirmation
         sendEmailConfirmation(user, token);
+
+        //activity log
+        sendActivityLog(user);
 
         response.setData(ProxyTransformer.transformUserToUserPojo(user));
         response.setResponse(IResponseEnum.SUCCESS);
         return response;
     }
 
-    private void sendEmailConfirmation(CTUser user, String token) {
-        MessagePojo message = new MessagePojo();
+
+    @Async
+    public void sendActivityLog(CTUser user) {
+        try {
+            ActivityLog activityLog = new ActivityLog();
+            activityLog.setActivityType("ACCOUNT_CREATION");
+            activityLog.setDescription("Account created successfully ");
+            activityLog.setRequestTime(LocalDateTime.now().format(Constants.DATE_TIME_FORMATTER));
+            activityLog.setEmailAddress(user.getEmail());
+
+            rabbitTemplate.convertAndSend(appProperties.getActivityExchange(), appProperties.getActivityLogRoutingKey(), activityLog);
+            log.debug("Activity Logged successfully");
+        } catch (Exception e) {
+            log.error("Error occurred while pushing activity ", e);
+        }
+    }
+
+
+    @Async
+    public void sendEmailConfirmation(CTUser user, String token) {
+            MessagePojo message = new MessagePojo();
 
 
         var expTime = LocalDateTime.now().plusMinutes(appProperties.getEmailConfirmationExpTime());
@@ -85,10 +109,15 @@ public class UserService {
         message.setSource("user-service");
         message.setSubject("Email Confirmation");
         message.setRequestTime(LocalDateTime.now().format(Constants.DATE_TIME_FORMATTER));
-
-        rabbitTemplate.convertAndSend(appProperties.getNotificationExchange(), appProperties.getRoutingKey(), message);
+        try {
+            rabbitTemplate.convertAndSend(appProperties.getNotificationExchange(), appProperties.getRoutingKey(), message);
+        } catch (Exception e) {
+            log.error("Error occurred while  pushing email Confirmation", e);
+        }
 
     }
+
+
 
     private IResponseData<UserPojo> isRequestValid(UserRequest request) {
         ResponseData<UserPojo> response = new ResponseData<>();
