@@ -2,8 +2,6 @@ package com.coronation.captr.userservice.respositories;
 
 import com.coronation.captr.userservice.entities.CTUser;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
 
@@ -18,12 +16,5 @@ public interface IUserRepository extends JpaRepository<CTUser, Long> {
 
     @Override
     Optional<CTUser> findById(Long userId);
-
-    @Query("select ct.pendingRequestPk from CTUser ct where ct.id = :id")
-    Optional<Long> getPendingRequestPk(Long id);
-
-    @Modifying
-    @Query("update CTUser u set u.pendingRequestPk = ?1 where u.id = ?2")
-    int setPendingRequestPk(Long pendingRequestPk, Long id);
 
 }
