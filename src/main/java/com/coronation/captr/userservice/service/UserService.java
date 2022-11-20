@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,31 +79,39 @@ public class UserService {
         return response;
     }
 
-    private void sendActivityLog(User user) {
-        ActivityLog activityLog = new ActivityLog();
-        activityLog.setActivityType("ACCOUNT CREATION");
-        activityLog.setDescription("Account created successfully ");
-        activityLog.setRequestTime(LocalDateTime.now().format(Constants.DATE_TIME_FORMATTER));
-        activityLog.setEmailAddress(user.getEmail());
 
-        rabbitTemplate.convertAndSend(appProperties.getActivityExchange(), appProperties.getActivityLogRoutingKey(), activityLog);
-        log.debug("Activity Logged successfully");
+    @Async
+    public void sendActivityLog(User user) {
+        try {
+            ActivityLog activityLog = new ActivityLog();
+            activityLog.setActivityType("ACCOUNT CREATION");
+            activityLog.setDescription("Account created successfully ");
+            activityLog.setRequestTime(LocalDateTime.now().format(Constants.DATE_TIME_FORMATTER));
+            activityLog.setEmailAddress(user.getEmail());
+
+            rabbitTemplate.convertAndSend(appProperties.getActivityExchange(), appProperties.getActivityLogRoutingKey(), activityLog);
+            log.debug("Activity Logged successfully");
+        } catch (Exception e) {
+            log.error("Error occurred while pushing activity ", e);
+        }
     }
-
     private void sendEmailConfirmation(User user, String token) {
-        MessagePojo message = new MessagePojo();
+        try {
+            MessagePojo message = new MessagePojo();
 
+            var expTime = LocalDateTime.now().plusMinutes(appProperties.getEmailConfirmationExpTime());
+            String link = String.format(appProperties.getEmailConfirmationLink(), user.getEmail(), token);
+            message.setMessageBody(String.format(appProperties.getEmailConfirmationMessage(), user.getFirstName(), link, expTime.format(Constants.DATE_TIME_FORMATTER)));
+            message.setRecipient(user.getEmail());
+            message.setSource("user-service");
+            message.setSubject("Email Confirmation");
+            message.setRequestTime(LocalDateTime.now().format(Constants.DATE_TIME_FORMATTER));
+            message.setCode(token);
 
-        var expTime = LocalDateTime.now().plusMinutes(appProperties.getEmailConfirmationExpTime());
-        String link = String.format(appProperties.getEmailConfirmationLink(), user.getEmail(), token);
-        message.setMessageBody(String.format(appProperties.getEmailConfirmationMessage(), user.getFirstName(), link, expTime.format(Constants.DATE_TIME_FORMATTER)));
-        message.setRecipient(user.getEmail());
-        message.setSource("user-service");
-        message.setSubject("Email Confirmation");
-        message.setRequestTime(LocalDateTime.now().format(Constants.DATE_TIME_FORMATTER));
-        message.setCode(token);
-
-        rabbitTemplate.convertAndSend(appProperties.getNotificationExchange(), appProperties.getRoutingKey(), message);
+            rabbitTemplate.convertAndSend(appProperties.getNotificationExchange(), appProperties.getRoutingKey(), message);
+        } catch (Exception e) {
+            log.error("Error occurred while  pushing email Confirmation", e);
+        }
 
     }
 
