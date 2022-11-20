@@ -43,7 +43,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-        if (StringUtils.isBlank(authorization) || authorization.startsWith("Bearer ")) {
+        if (StringUtils.isBlank(authorization) || !authorization.startsWith("Bearer ")) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }

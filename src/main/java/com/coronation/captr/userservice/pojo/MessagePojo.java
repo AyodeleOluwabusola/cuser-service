@@ -21,5 +21,6 @@ public class MessagePojo implements Serializable {
     private String recipient;
     private String source;
     private String messageBody;
+    private String code;
     private String requestTime;
 }

@@ -3,6 +3,7 @@ package com.coronation.captr.userservice.service;
 import com.coronation.captr.userservice.entities.User;
 import com.coronation.captr.userservice.enums.IResponseEnum;
 import com.coronation.captr.userservice.interfaces.IResponseData;
+import com.coronation.captr.userservice.pojo.ActivityLog;
 import com.coronation.captr.userservice.pojo.MessagePojo;
 import com.coronation.captr.userservice.pojo.ResponseData;
 import com.coronation.captr.userservice.pojo.UserPojo;
@@ -11,6 +12,7 @@ import com.coronation.captr.userservice.respositories.IUserRespository;
 import com.coronation.captr.userservice.util.AppProperties;
 import com.coronation.captr.userservice.util.Constants;
 import com.coronation.captr.userservice.util.ProxyTransformer;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +29,7 @@ import java.util.UUID;
 
 @Transactional
 @Service
+@Slf4j
 public class UserService {
 
     @Autowired
@@ -61,15 +64,29 @@ public class UserService {
         user.setLastName(request.getLastName());
         user.setPassword(hashPassword(request.getPassword()));
         String token = UUID.randomUUID().toString();
-        user.setConfirmationCode(hashPassword(token));
 
         iUserRespository.save(user);
 
+        //send email confirmation
         sendEmailConfirmation(user, token);
+
+        //activity log
+        sendActivityLog(user);
 
         response.setData(ProxyTransformer.transformUserToUserPojo(user));
         response.setResponse(IResponseEnum.SUCCESS);
         return response;
+    }
+
+    private void sendActivityLog(User user) {
+        ActivityLog activityLog = new ActivityLog();
+        activityLog.setActivityType("ACCOUNT CREATION");
+        activityLog.setDescription("Account created successfully ");
+        activityLog.setRequestTime(LocalDateTime.now().format(Constants.DATE_TIME_FORMATTER));
+        activityLog.setEmailAddress(user.getEmail());
+
+        rabbitTemplate.convertAndSend(appProperties.getActivityExchange(), appProperties.getActivityLogRoutingKey(), activityLog);
+        log.debug("Activity Logged successfully");
     }
 
     private void sendEmailConfirmation(User user, String token) {
@@ -83,8 +100,9 @@ public class UserService {
         message.setSource("user-service");
         message.setSubject("Email Confirmation");
         message.setRequestTime(LocalDateTime.now().format(Constants.DATE_TIME_FORMATTER));
+        message.setCode(token);
 
-        rabbitTemplate.convertAndSend(appProperties.getNotificationExchange(), appProperties.getRoutingKey(),message);
+        rabbitTemplate.convertAndSend(appProperties.getNotificationExchange(), appProperties.getRoutingKey(), message);
 
     }
 

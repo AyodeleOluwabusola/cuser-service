@@ -19,6 +19,10 @@ public class AppProperties {
     private String routingKey = "routing.email_sender";
     private String emailConfirmationMessage = "Dear %s, \n Here is your email confirmation link. %s . Kindly note this link would expire by %s ";
     private int emailConfirmationExpTime = 360;
-    private String emailConfirmationLink= "localhost:8000/captr/access/verify-email?email=%s&code=%s";
+    private String emailConfirmationLink= "<a href=\"http://localhost:8000/captr/access/verify-email?email=%s&code=%s\">Confirm password!!</a>";
 
+
+    private String activityQueue = "activity_log_queue";
+    private String activityExchange = "exchange.activity_log_exchange";
+    private String activityLogRoutingKey = "routing.activty_log";
 }

@@ -30,9 +30,6 @@ public class User extends BaseEntity {
     @Column(name = "EMAIL", unique = true, nullable = false)
     private String email;
 
-    @Column(name = "CONFIRMATION_CODE")
-    private String confirmationCode;
-
     @Column(name = "CONFIRMATION_TIMESTAMP")
     private LocalDateTime emailConfirmationTimestamp;
 
