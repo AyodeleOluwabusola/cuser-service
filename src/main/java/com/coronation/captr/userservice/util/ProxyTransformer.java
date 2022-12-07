@@ -1,6 +1,6 @@
 package com.coronation.captr.userservice.util;
 
-import com.coronation.captr.userservice.entities.CTUser;
+import com.coronation.captr.userservice.entities.CRUser;
 import com.coronation.captr.userservice.pojo.UserPojo;
 import lombok.experimental.UtilityClass;
 
@@ -10,7 +10,7 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class ProxyTransformer {
 
-    public UserPojo transformUserToUserPojo(CTUser user){
+    public UserPojo transformUserToUserPojo(CRUser user){
 
         UserPojo userPojo = new UserPojo();
         userPojo.setEmail(user.getEmail());
